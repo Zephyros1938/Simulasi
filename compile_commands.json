@@ -1,8 +1,7 @@
 [
   {
-    "file": "src/main.cpp",
     "arguments": [
-      "g++",
+      "/usr/bin/g++",
       "-std=c++23",
       "-O2",
       "-Wall",
@@ -12,20 +11,19 @@
       "-I./src",
       "-I./external/imgui",
       "-I./external/imgui/backends",
-      "-MP",
-      "-MMD",
+      "-I/usr/local/include",
       "-c",
-      "src/main.cpp",
       "-o",
-      "src/main.o"
+      "src/main.o",
+      "src/main.cpp"
     ],
-    "directory": "/home/zeph/gamedev/Simulasi",
-    "output": "src/main.o"
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/src/main.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/src/main.o"
   },
   {
-    "file": "external/imgui/backends/imgui_impl_glfw.cpp",
     "arguments": [
-      "g++",
+      "/usr/bin/g++",
       "-std=c++23",
       "-O2",
       "-Wall",
@@ -35,20 +33,19 @@
       "-I./src",
       "-I./external/imgui",
       "-I./external/imgui/backends",
-      "-MP",
-      "-MMD",
+      "-I/usr/local/include",
       "-c",
-      "external/imgui/backends/imgui_impl_glfw.cpp",
       "-o",
-      "external/imgui/backends/imgui_impl_glfw.o"
+      "external/imgui/imgui.o",
+      "external/imgui/imgui.cpp"
     ],
-    "directory": "/home/zeph/gamedev/Simulasi",
-    "output": "external/imgui/backends/imgui_impl_glfw.o"
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui.o"
   },
   {
-    "file": "external/imgui/backends/imgui_impl_opengl3.cpp",
     "arguments": [
-      "g++",
+      "/usr/bin/g++",
       "-std=c++23",
       "-O2",
       "-Wall",
@@ -58,14 +55,124 @@
       "-I./src",
       "-I./external/imgui",
       "-I./external/imgui/backends",
-      "-MP",
-      "-MMD",
+      "-I/usr/local/include",
       "-c",
-      "external/imgui/backends/imgui_impl_opengl3.cpp",
       "-o",
-      "external/imgui/backends/imgui_impl_opengl3.o"
+      "external/imgui/imgui_draw.o",
+      "external/imgui/imgui_draw.cpp"
     ],
-    "directory": "/home/zeph/gamedev/Simulasi",
-    "output": "external/imgui/backends/imgui_impl_opengl3.o"
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_draw.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_draw.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-std=c++23",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-I./external",
+      "-I./include",
+      "-I./src",
+      "-I./external/imgui",
+      "-I./external/imgui/backends",
+      "-I/usr/local/include",
+      "-c",
+      "-o",
+      "external/imgui/imgui_widgets.o",
+      "external/imgui/imgui_widgets.cpp"
+    ],
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_widgets.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_widgets.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-std=c++23",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-I./external",
+      "-I./include",
+      "-I./src",
+      "-I./external/imgui",
+      "-I./external/imgui/backends",
+      "-I/usr/local/include",
+      "-c",
+      "-o",
+      "external/imgui/imgui_tables.o",
+      "external/imgui/imgui_tables.cpp"
+    ],
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_tables.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_tables.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-std=c++23",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-I./external",
+      "-I./include",
+      "-I./src",
+      "-I./external/imgui",
+      "-I./external/imgui/backends",
+      "-I/usr/local/include",
+      "-c",
+      "-o",
+      "external/imgui/imgui_demo.o",
+      "external/imgui/imgui_demo.cpp"
+    ],
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_demo.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/imgui_demo.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-std=c++23",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-I./external",
+      "-I./include",
+      "-I./src",
+      "-I./external/imgui",
+      "-I./external/imgui/backends",
+      "-I/usr/local/include",
+      "-c",
+      "-o",
+      "external/imgui/backends/imgui_impl_glfw.o",
+      "external/imgui/backends/imgui_impl_glfw.cpp"
+    ],
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/backends/imgui_impl_glfw.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/backends/imgui_impl_glfw.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-std=c++23",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-I./external",
+      "-I./include",
+      "-I./src",
+      "-I./external/imgui",
+      "-I./external/imgui/backends",
+      "-I/usr/local/include",
+      "-c",
+      "-o",
+      "external/imgui/backends/imgui_impl_opengl3.o",
+      "external/imgui/backends/imgui_impl_opengl3.cpp"
+    ],
+    "directory": "/home/zeph/Coding/GAMES/Simulasi",
+    "file": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/backends/imgui_impl_opengl3.cpp",
+    "output": "/home/zeph/Coding/GAMES/Simulasi/external/imgui/backends/imgui_impl_opengl3.o"
   }
 ]
