@@ -10,11 +10,11 @@ std::function<float(float, float)> parseExpression(const char *&ptr) {
   }
   char op = *ptr++;
 
-  if (op == 'L')
+  if (op == '(')
     return [](float l, float v) { return l; };
-  if (op == 'V')
+  if (op == ')')
     return [](float l, float v) { return v; };
-  if (std::isdigit(op) || op == '-') {
+  if (std::isdigit(op) || op == '_') {
     ptr--;
     float val = strtof(ptr, const_cast<char **>(&ptr));
     return [val](float l, float v) { return val; };
@@ -23,6 +23,7 @@ std::function<float(float, float)> parseExpression(const char *&ptr) {
   auto arg1 = parseExpression(ptr);
   if (*ptr == ',')
     ptr++;
+  // binary
   if (op == '*') {
     auto arg2 = parseExpression(ptr);
     return [arg1, arg2](float l, float v) { return arg1(l, v) * arg2(l, v); };
@@ -37,19 +38,41 @@ std::function<float(float, float)> parseExpression(const char *&ptr) {
     auto arg2 = parseExpression(ptr);
     return [arg1, arg2](float l, float v) { return arg1(l, v) + arg2(l, v); };
   }
-  if (op == '_') {
+  if (op == '-') {
     auto arg2 = parseExpression(ptr);
     return [arg1, arg2](float l, float v) { return arg1(l, v) - arg2(l, v); };
   }
-  if (op == 'p') {
+  if (op == '^') {
     auto arg2 = parseExpression(ptr);
     return [arg1, arg2](float l, float v) {
       return std::pow(arg1(l, v), arg2(l, v));
     };
   }
+  if (op == 'm') {
+    auto arg2 = parseExpression(ptr);
+    return [arg1, arg2](float l, float v) {
+      return std::min(arg1(l, v), arg2(l, v));
+    };
+  }
+  if (op == 'M') {
+    auto arg2 = parseExpression(ptr);
+    return [arg1, arg2](float l, float v) {
+      return std::max(arg1(l, v), arg2(l, v));
+    };
+  }
 
+  // unary
   if (op == 'l') {
+    return [arg1](float l, float v) { return std::log(arg1(l, v)); };
+  }
+  if (op == 'L') {
     return [arg1](float l, float v) { return std::log2(arg1(l, v)); };
+  }
+  if (op == 's') {
+    return [arg1](float l, float v) { return std::sqrt(arg1(l, v)); };
+  }
+  if (op == 'S') {
+    return [arg1](float l, float v) { return std::cbrt(arg1(l, v)); };
   }
 
   return [](float l, float v) { return 0.0f; };
@@ -57,7 +80,7 @@ std::function<float(float, float)> parseExpression(const char *&ptr) {
 } // namespace functionlang
 
 int main() {
-  const char *c = "+1,_-1,-2";
+  const char *c = "L^2,(";
   std::cout << functionlang::parseExpression(c)(10, 5) << std::endl;
   return 0;
 }
