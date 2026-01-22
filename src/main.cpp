@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <glm/glm.hpp>
 #include <map>
 #include <stdexcept>
@@ -65,21 +66,60 @@ const float aspecty = 9;
 const int height = width * (aspecty / aspectx);
 } // namespace settings
 namespace game_data {
+
+template <typename T, T DefaultValue, int HistoryLength> class EconomyObject {
+public:
+  EconomyObject(float baseLevel = 1.0f, char *upgradeLevelData = nullptr)
+      : value(DefaultValue), level(baseLevel), minValue(DefaultValue),
+        maxValue(DefaultValue)
+  // Initialize directly to the lambda
+  {
+    std::fill_n(history, HistoryLength, DefaultValue);
+    if (upgradeLevelData == nullptr) {
+
+    } else {
+      getUpgradeCost = [this]() -> float {
+        return pow(level, 1.5 + log2(level));
+      };
+    }
+  }
+
+  void update(float dt) {
+    value += level * dt;
+    utilities::pushToBackOfArray(history, value);
+    minValue = utilities::minElement(history);
+    maxValue = utilities::maxElement(history);
+  };
+
+  T getValue() const { return value; }
+  float getLevel() const { return level; }
+  const T *getHistory() const { return history; }
+  constexpr int getHistoryLength() const { return HistoryLength; }
+  T getMinHistoryV() const { return minValue; }
+  T getMaxHistoryV() const { return maxValue; }
+
+  void setLevel(float v) { level += v; }
+  void incrLevel(float what = 1) { level += what; }
+  void decrLevel(float what = 1) { level -= what; }
+
+  void setValue(T v) { value = v; }
+  void incrValue(T what = 1) { value += what; }
+  void decrValue(T what = 1) { value -= what; }
+
+  std::function<float()> getUpgradeCost;
+
+private:
+  T value;
+  float level;
+  T history[HistoryLength];
+  T minValue;
+  T maxValue;
+};
+
 class Economy {
 public:
-  float totalShare = 0, level = 0, maxLevel = 0, maxShare = 0, minLevel = 0,
-        minShare = 0;
-  float levelHistory[255];
-  float shareHistory[1024];
-  void update(double dt) {
-    totalShare += level * dt;
-    utilities::pushToBackOfArray(levelHistory, level);
-    utilities::pushToBackOfArray(shareHistory, totalShare);
-    minLevel = utilities::minElement(levelHistory);
-    maxLevel = utilities::maxElement(levelHistory);
-    minShare = utilities::minElement(shareHistory);
-    maxShare = utilities::maxElement(shareHistory);
-  }
+  EconomyObject<float, 100.0f, 1024> baseShare;
+  void update(double dt) { baseShare.update(dt); }
 };
 Economy economy;
 } // namespace game_data
@@ -96,11 +136,11 @@ int main() {
   glfwSetWindowSize(window, settings::width, settings::height);
   float lastFrame = 0.0f;
   float deltaTime = 0.0f;
-
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
     lastFrame = currentFrame;
+    game_data::economy.update(deltaTime);
 
     glfwPollEvents();
 
@@ -108,7 +148,6 @@ int main() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
-    game_data::economy.update(deltaTime);
 
     {
       ImGui::Begin("Main Menu");
@@ -126,48 +165,45 @@ int main() {
     {
       ImGui::Begin("Economy");
       ImGui::SeparatorText("Economy");
-      ImGui::Text("Money: %f", game_data::economy.totalShare);
-      ImGui::Text("Level: %.2f", game_data::economy.level);
-      if (ImGui::Button("Level Up")) {
-        game_data::economy.level++;
-      }
-      if (ImGui::Button("Level Down")) {
-        game_data::economy.level--;
-      }
       {
-        ImGui::PlotLines("Level History", game_data::economy.levelHistory, 255,
-                         0, "Level", game_data::economy.minLevel,
-                         game_data::economy.maxLevel, ImVec2(0, 80));
-        if (ImGui::BeginTable("Level Info", 2,
+        auto *e = &game_data::economy.baseShare;
+        ImGui::PlotLines("##", e->getHistory(), e->getHistoryLength(), 0,
+                         "Share", e->getMinHistoryV(), e->getMaxHistoryV(),
+                         ImVec2(ImGui::GetWindowSize().x, 100));
+        if (ImGui::BeginTable("Share Info", 4,
                               ImGuiTableFlags_Borders |
                                   ImGuiTableFlags_RowBg)) {
-          ImGui::TableSetupColumn("Min");
-          ImGui::TableSetupColumn("Max");
+          ImGui::TableSetupColumn("Hist. Min.");
+          ImGui::TableSetupColumn("Hist. Max.");
+          ImGui::TableSetupColumn("Current");
+          ImGui::TableSetupColumn("LV");
           ImGui::TableHeadersRow();
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
-          ImGui::Text("%.2f", game_data::economy.minLevel);
+          ImGui::Text("%.2f", e->getMinHistoryV());
           ImGui::TableNextColumn();
-          ImGui::Text("%.2f", game_data::economy.maxLevel);
+          ImGui::Text("%.2f", e->getMaxHistoryV());
+          ImGui::TableNextColumn();
+          ImGui::Text("%.2f", e->getValue());
+          ImGui::TableNextColumn();
+          ImGui::Text("%.2f", e->getLevel());
           ImGui::EndTable();
         }
-      }
-      {
-        ImGui::PlotLines("Share History", game_data::economy.shareHistory, 1024,
-                         0, "Share", game_data::economy.minShare,
-                         game_data::economy.maxShare, ImVec2(0, 80));
-        if (ImGui::BeginTable("Share Info", 2,
-                              ImGuiTableFlags_Borders |
-                                  ImGuiTableFlags_RowBg)) {
-          ImGui::TableSetupColumn("Min");
-          ImGui::TableSetupColumn("Max");
-          ImGui::TableHeadersRow();
-          ImGui::TableNextRow();
-          ImGui::TableNextColumn();
-          ImGui::Text("%.2f", game_data::economy.minShare);
-          ImGui::TableNextColumn();
-          ImGui::Text("%.2f", game_data::economy.maxShare);
-          ImGui::EndTable();
+        if (ImGui::Button("Incr. LV")) {
+          e->incrLevel();
+        }
+        if (ImGui::Button("Decr. LV")) {
+          e->decrLevel();
+        }
+        float requiredSpend = pow(e->getLevel(), 1.5f + log2(e->getLevel()));
+        ImGui::ProgressBar((e->getValue() / requiredSpend), ImVec2(-FLT_MIN, 0),
+                           "Amount Left");
+        ImGui::Text("Requires %.2f (need %.2f)", requiredSpend,
+                    requiredSpend - e->getValue());
+        auto b = ImGui::Button("Spend %.2f for LV increase");
+        if (b && e->getValue() - requiredSpend > 0) {
+          e->decrValue(requiredSpend);
+          e->incrLevel();
         }
       }
       ImGui::End();
