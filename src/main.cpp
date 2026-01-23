@@ -160,7 +160,8 @@ class Stock : public EconomyObject<float, DefaultValue, HistoryLength> {};
 
 class Economy {
 public:
-  EconomyObject<float, 10.0f, 1024> baseShare;
+  EconomyObject<float, 10.0f, 1024> baseShare =
+      EconomyObject<float, 10.0f, 1024>(1.0, nullptr, nullptr, "Basic Share");
   void update(double dt) { baseShare.update(dt); }
 };
 Economy economy;
@@ -302,6 +303,8 @@ int main() {
       ImGui::ColorEdit4("Edit Background Color", &settings::clearColor[0]);
       ImGui::End();
     }
+    ImGui::EndFrame();
+    ImGui::UpdatePlatformWindows();
 
     ImGui::Render();
     int display_w, display_h;
