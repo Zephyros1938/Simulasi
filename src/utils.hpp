@@ -70,6 +70,27 @@ template <typename T, int S> T maxElement(T (&array)[S]) {
   return maxVal;
 }
 
+template <typename T, int S> void rotateArray(T (&array)[S], int k) {
+  k %= S;
+  if (k == 0)
+    return;
+
+  std::reverse(array, array + k);     // Reverse first k
+  std::reverse(array + k, array + S); // Reverse the rest
+  std::reverse(array, array + S);     // Reverse all
+}
+
+template <typename T, int S> void reverseArray(T (&array)[S]) {
+  int i = 0, j = S - 1;
+  while (i < j) {
+    T temp = array[i];
+    array[i] = array[j];
+    array[j] = temp;
+    i++;
+    j--;
+  }
+}
+
 class LogicEvaluator {
 private:
   std::function<float(const std::vector<float> &)> formula;

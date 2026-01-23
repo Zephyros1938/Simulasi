@@ -1,4 +1,5 @@
 #include "economy/base.hpp"
+#include "gambling/slotMachine.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -22,7 +23,8 @@ map<uint32_t, uint32_t> GlfwFlags = {
     {GLFW_CONTEXT_VERSION_MAJOR, 4},
     {GLFW_CONTEXT_VERSION_MINOR, 6},
     {GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE},
-    {GLFW_RESIZABLE, GLFW_FALSE}};
+    {GLFW_RESIZABLE, GLFW_FALSE},
+    {GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE}};
 map<uint32_t, uint32_t> GlfwInitFlags{};
 } // namespace initialization
 namespace settings {
@@ -35,6 +37,7 @@ const int height = width * (aspecty / aspectx);
 } // namespace settings
 namespace game_data {
 Economy economy;
+gambling::SlotMachine<5, float> slotMachine;
 } // namespace game_data
 
 void initGlfw();
@@ -156,6 +159,14 @@ int main() {
       ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0),
                          canAfford ? "READY TO UPGRADE"
                                    : "Accumulating Funds...");
+
+      ImGui::End();
+    }
+    {
+      ImGui::Begin("Gambling");
+      ImGui::TextColored(ImVec4(1.0, 1.0, 0.8, 1.0), "Gambling Menu");
+      ImGui::Spacing();
+      ImGui::SeparatorText("Slots");
 
       ImGui::End();
     }
