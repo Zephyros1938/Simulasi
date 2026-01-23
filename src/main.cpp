@@ -70,26 +70,19 @@ namespace game_data {
 
 class LogicEvaluator {
 private:
-  // The "compiled" logic stored as a lambda
-  std::function<float(float, float)> formula;
+  std::function<float(const std::vector<float> &)> formula;
   std::string rawSource;
 
 public:
-  // Constructor: Parses the string once and stores the behavior
   LogicEvaluator(const std::string &source = "0") : rawSource(source) {
     const char *ptr = rawSource.c_str();
     formula = functionlang::parseExpression(ptr);
   }
 
-  // The execution method: Highly efficient call
-  float evaluate(float level, float value) const {
-    return formula(level, value);
-  }
+  float evaluate(const std::vector<float> &args) const { return formula(args); }
 
-  // Helper to see what the current formula string is
   std::string getSource() const { return rawSource; }
 
-  // Allows updating the formula at runtime
   void updateFormula(const std::string &newSource) {
     rawSource = newSource;
     const char *ptr = rawSource.c_str();
@@ -99,7 +92,8 @@ public:
 
 template <typename T, T DefaultValue, int HistoryLength> class EconomyObject {
 public:
-  EconomyObject(float baseLevel = 1.0f, const char *upgradeLevelData = nullptr)
+  EconomyObject(float baseLevel = 1.0f, const char *upgradeLevelData = nullptr,
+                const char *valueIncreaseData = nullptr)
       : value(DefaultValue), level(baseLevel), minValue(DefaultValue),
         maxValue(DefaultValue)
   // Initialize directly to the lambda
@@ -108,12 +102,17 @@ public:
     if (upgradeLevelData != nullptr) {
       upgradeLevelFormula = LogicEvaluator(upgradeLevelData);
     } else {
-      upgradeLevelFormula = LogicEvaluator("*10,^1.15,(");
+      upgradeLevelFormula = LogicEvaluator("*10,^1.15,V0");
+    }
+    if (valueIncreaseData != nullptr) {
+      rateIncreaseFormula = LogicEvaluator(valueIncreaseData);
+    } else {
+      rateIncreaseFormula = LogicEvaluator("+V0,V1");
     }
   }
 
   void update(float dt) {
-    value += level * dt;
+    value = rateIncreaseFormula.evaluate({value, level * dt});
     utilities::pushToBackOfArray(history, value);
     minValue = utilities::minElement(history);
     maxValue = utilities::maxElement(history);
@@ -135,7 +134,7 @@ public:
   void decrValue(T what = 1) { value -= what; }
 
   T getValueForLevelUpgrade(float LVup = 1.0) {
-    return upgradeLevelFormula.evaluate(level + LVup, value);
+    return upgradeLevelFormula.evaluate({level + LVup, 0.0});
   }
   std::string getLevelCostFormula() { return upgradeLevelFormula.getSource(); }
 
@@ -146,6 +145,7 @@ private:
   T minValue;
   T maxValue;
   LogicEvaluator upgradeLevelFormula;
+  LogicEvaluator rateIncreaseFormula;
 };
 
 class Economy {

@@ -67,7 +67,7 @@ int main() {
 
     pt = input_buffer.c_str();
 
-    std::cout << functionlang::parseExpression(pt)(10, 5) << std::endl;
+    std::cout << functionlang::parseExpression(pt)({10, 5}) << std::endl;
   }
   return 0;
 }
