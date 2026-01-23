@@ -1,3 +1,4 @@
+#include "economy/base.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -6,56 +7,21 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <functional>
 #include <functionlang.hpp>
 #include <glm/glm.hpp>
 #include <map>
 #include <stdexcept>
 #include <vector>
 
-namespace utilities {
-template <typename T, int S> void pushToBackOfArray(T (&array)[S], T val) {
-  std::copy(array + 1, array + S, array);
-  array[S - 1] = val;
-}
-
-template <typename T, int S> T minElement(T (&array)[S]) {
-  int n = sizeof(array) / sizeof(array[0]);
-  T minVal = array[0];
-
-  for (int i = 0; i < n; i++) {
-    if (array[i] < minVal) {
-      minVal = array[i];
-    }
-  }
-
-  return minVal;
-}
-
-template <typename T, int S> T maxElement(T (&array)[S]) {
-  int n = sizeof(array) / sizeof(array[0]);
-  T maxVal = array[0];
-
-  for (int i = 0; i < n; i++) {
-    if (array[i] > maxVal)
-      maxVal = array[i];
-  }
-
-  return maxVal;
-}
-
-} // namespace utilities
 namespace initialization {
 using namespace std;
 
 vector<uint32_t> ImGuiFlags = {ImGuiConfigFlags_DockingEnable,
-                               ImGuiConfigFlags_ViewportsEnable,
                                ImGuiConfigFlags_IsSRGB};
 map<uint32_t, uint32_t> GlfwFlags = {
     {GLFW_CONTEXT_VERSION_MAJOR, 4},
     {GLFW_CONTEXT_VERSION_MINOR, 6},
     {GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE},
-    {GLFW_CONTEXT_DEBUG, GLFW_TRUE},
     {GLFW_RESIZABLE, GLFW_FALSE}};
 map<uint32_t, uint32_t> GlfwInitFlags{};
 } // namespace initialization
@@ -68,102 +34,6 @@ const float aspecty = 9;
 const int height = width * (aspecty / aspectx);
 } // namespace settings
 namespace game_data {
-
-class LogicEvaluator {
-private:
-  std::function<float(const std::vector<float> &)> formula;
-  std::string rawSource;
-
-public:
-  LogicEvaluator(const std::string &source = "0") : rawSource(source) {
-    const char *ptr = rawSource.c_str();
-    formula = functionlang::parseExpression(ptr);
-  }
-
-  float evaluate(const std::vector<float> &args) const { return formula(args); }
-
-  std::string getSource() const { return rawSource; }
-
-  void updateFormula(const std::string &newSource) {
-    rawSource = newSource;
-    const char *ptr = rawSource.c_str();
-    formula = functionlang::parseExpression(ptr);
-  }
-};
-
-template <typename T, T DefaultValue, int HistoryLength> class EconomyObject {
-public:
-  EconomyObject(float baseLevel = 1.0f, const char *upgradeLevelData = nullptr,
-                const char *valueIncreaseData = nullptr,
-                std::string name = uuid::generate_uuid_v4())
-      : value(DefaultValue), level(baseLevel), minValue(DefaultValue),
-        maxValue(DefaultValue), name(name)
-  // Initialize directly to the lambda
-  {
-    std::fill_n(history, HistoryLength, DefaultValue);
-    if (upgradeLevelData != nullptr) {
-      upgradeLevelFormula = LogicEvaluator(upgradeLevelData);
-    } else {
-      upgradeLevelFormula = LogicEvaluator("*10,^1.15,V0");
-    }
-    if (valueIncreaseData != nullptr) {
-      rateIncreaseFormula = LogicEvaluator(valueIncreaseData);
-    } else {
-      rateIncreaseFormula = LogicEvaluator("+V0,V1");
-    }
-  }
-
-  void update(float dt) {
-    value = rateIncreaseFormula.evaluate({value, level * dt});
-    utilities::pushToBackOfArray(history, value);
-    minValue = utilities::minElement(history);
-    maxValue = utilities::maxElement(history);
-  };
-
-  T getValue() const { return value; }
-  float getLevel() const { return level; }
-  const T *getHistory() const { return history; }
-  constexpr int getHistoryLength() const { return HistoryLength; }
-  T getMinHistoryV() const { return minValue; }
-  T getMaxHistoryV() const { return maxValue; }
-
-  void setLevel(float v) { level += v; }
-  void incrLevel(float what = 1) { level += what; }
-  void decrLevel(float what = 1) { level -= what; }
-
-  void setValue(T v) { value = v; }
-  void incrValue(T what = 1) { value += what; }
-  void decrValue(T what = 1) { value -= what; }
-
-  T getValueForLevelUpgrade(float LVup = 1.0) {
-    return upgradeLevelFormula.evaluate({level + LVup, 0.0});
-  }
-  std::string getLevelCostFormula() { return upgradeLevelFormula.getSource(); }
-  std::string getRateIncreaseFormula() {
-    return rateIncreaseFormula.getSource();
-  }
-  std::string getName() { return name; }
-
-private:
-  T value;
-  float level;
-  T history[HistoryLength];
-  T minValue;
-  T maxValue;
-  LogicEvaluator upgradeLevelFormula;
-  LogicEvaluator rateIncreaseFormula;
-  std::string name;
-};
-
-template <float DefaultValue = 0, int HistoryLength = 64>
-class Stock : public EconomyObject<float, DefaultValue, HistoryLength> {};
-
-class Economy {
-public:
-  EconomyObject<float, 10.0f, 1024> baseShare =
-      EconomyObject<float, 10.0f, 1024>(1.0, nullptr, nullptr, "Basic Share");
-  void update(double dt) { baseShare.update(dt); }
-};
 Economy economy;
 } // namespace game_data
 
@@ -294,7 +164,7 @@ int main() {
       ImGui::SeparatorText("Debug");
       ImGui::Text("dt: %.2f", 1.0f / deltaTime);
       if (ImGui::Button("Reset Economy")) {
-        game_data::economy = game_data::Economy();
+        game_data::economy = Economy();
       }
       if (ImGui::InputText("Window Title", settings::windowTitle,
                            IM_ARRAYSIZE(settings::windowTitle))) {

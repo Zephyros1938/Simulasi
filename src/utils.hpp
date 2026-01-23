@@ -1,7 +1,11 @@
 #pragma once
+#include "functionlang.hpp"
+#include <algorithm>
+#include <functional>
 #include <random>
 #include <sstream>
 
+namespace util {
 namespace uuid {
 static std::random_device rd;
 static std::mt19937 gen(rd());
@@ -35,3 +39,57 @@ std::string generate_uuid_v4() {
   return ss.str();
 }
 } // namespace uuid
+
+template <typename T, int S> void pushToBackOfArray(T (&array)[S], T val) {
+  std::copy(array + 1, array + S, array);
+  array[S - 1] = val;
+}
+
+template <typename T, int S> T minElement(T (&array)[S]) {
+  int n = sizeof(array) / sizeof(array[0]);
+  T minVal = array[0];
+
+  for (int i = 0; i < n; i++) {
+    if (array[i] < minVal) {
+      minVal = array[i];
+    }
+  }
+
+  return minVal;
+}
+
+template <typename T, int S> T maxElement(T (&array)[S]) {
+  int n = sizeof(array) / sizeof(array[0]);
+  T maxVal = array[0];
+
+  for (int i = 0; i < n; i++) {
+    if (array[i] > maxVal)
+      maxVal = array[i];
+  }
+
+  return maxVal;
+}
+
+class LogicEvaluator {
+private:
+  std::function<float(const std::vector<float> &)> formula;
+  std::string rawSource;
+
+public:
+  LogicEvaluator(const std::string &source = "0") : rawSource(source) {
+    const char *ptr = rawSource.c_str();
+    formula = functionlang::parseExpression(ptr);
+  }
+
+  float evaluate(const std::vector<float> &args) const { return formula(args); }
+
+  std::string getSource() const { return rawSource; }
+
+  void updateFormula(const std::string &newSource) {
+    rawSource = newSource;
+    const char *ptr = rawSource.c_str();
+    formula = functionlang::parseExpression(ptr);
+  }
+};
+
+} // namespace util
