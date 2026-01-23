@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <functionlang.hpp>
 #include <glm/glm.hpp>
 #include <map>
 #include <stdexcept>
@@ -67,20 +68,47 @@ const int height = width * (aspecty / aspectx);
 } // namespace settings
 namespace game_data {
 
+class LogicEvaluator {
+private:
+  // The "compiled" logic stored as a lambda
+  std::function<float(float, float)> formula;
+  std::string rawSource;
+
+public:
+  // Constructor: Parses the string once and stores the behavior
+  LogicEvaluator(const std::string &source = "0") : rawSource(source) {
+    const char *ptr = rawSource.c_str();
+    formula = functionlang::parseExpression(ptr);
+  }
+
+  // The execution method: Highly efficient call
+  float evaluate(float level, float value) const {
+    return formula(level, value);
+  }
+
+  // Helper to see what the current formula string is
+  std::string getSource() const { return rawSource; }
+
+  // Allows updating the formula at runtime
+  void updateFormula(const std::string &newSource) {
+    rawSource = newSource;
+    const char *ptr = rawSource.c_str();
+    formula = functionlang::parseExpression(ptr);
+  }
+};
+
 template <typename T, T DefaultValue, int HistoryLength> class EconomyObject {
 public:
-  EconomyObject(float baseLevel = 1.0f, char *upgradeLevelData = nullptr)
+  EconomyObject(float baseLevel = 1.0f, const char *upgradeLevelData = nullptr)
       : value(DefaultValue), level(baseLevel), minValue(DefaultValue),
         maxValue(DefaultValue)
   // Initialize directly to the lambda
   {
     std::fill_n(history, HistoryLength, DefaultValue);
-    if (upgradeLevelData == nullptr) {
-
+    if (upgradeLevelData != nullptr) {
+      upgradeLevelFormula = LogicEvaluator(upgradeLevelData);
     } else {
-      getUpgradeCost = [this]() -> float {
-        return pow(level, 1.5 + log2(level));
-      };
+      upgradeLevelFormula = LogicEvaluator("*10,^1.15,(");
     }
   }
 
@@ -106,7 +134,10 @@ public:
   void incrValue(T what = 1) { value += what; }
   void decrValue(T what = 1) { value -= what; }
 
-  std::function<float()> getUpgradeCost;
+  T getValueForLevelUpgrade(float LVup = 1.0) {
+    return upgradeLevelFormula.evaluate(level + LVup, value);
+  }
+  std::string getLevelCostFormula() { return upgradeLevelFormula.getSource(); }
 
 private:
   T value;
@@ -114,11 +145,12 @@ private:
   T history[HistoryLength];
   T minValue;
   T maxValue;
+  LogicEvaluator upgradeLevelFormula;
 };
 
 class Economy {
 public:
-  EconomyObject<float, 100.0f, 1024> baseShare;
+  EconomyObject<float, 10.0f, 1024> baseShare;
   void update(double dt) { baseShare.update(dt); }
 };
 Economy economy;
@@ -163,49 +195,78 @@ int main() {
       ImGui::End();
     }
     {
-      ImGui::Begin("Economy");
-      ImGui::SeparatorText("Economy");
-      {
-        auto *e = &game_data::economy.baseShare;
-        ImGui::PlotLines("##", e->getHistory(), e->getHistoryLength(), 0,
-                         "Share", e->getMinHistoryV(), e->getMaxHistoryV(),
-                         ImVec2(ImGui::GetWindowSize().x, 100));
-        if (ImGui::BeginTable("Share Info", 4,
-                              ImGuiTableFlags_Borders |
-                                  ImGuiTableFlags_RowBg)) {
-          ImGui::TableSetupColumn("Hist. Min.");
-          ImGui::TableSetupColumn("Hist. Max.");
-          ImGui::TableSetupColumn("Current");
-          ImGui::TableSetupColumn("LV");
-          ImGui::TableHeadersRow();
-          ImGui::TableNextRow();
-          ImGui::TableNextColumn();
-          ImGui::Text("%.2f", e->getMinHistoryV());
-          ImGui::TableNextColumn();
-          ImGui::Text("%.2f", e->getMaxHistoryV());
-          ImGui::TableNextColumn();
-          ImGui::Text("%.2f", e->getValue());
-          ImGui::TableNextColumn();
-          ImGui::Text("%.2f", e->getLevel());
-          ImGui::EndTable();
-        }
-        if (ImGui::Button("Incr. LV")) {
-          e->incrLevel();
-        }
-        if (ImGui::Button("Decr. LV")) {
-          e->decrLevel();
-        }
-        float requiredSpend = pow(e->getLevel(), 1.5f + log2(e->getLevel()));
-        ImGui::ProgressBar((e->getValue() / requiredSpend), ImVec2(-FLT_MIN, 0),
-                           "Amount Left");
-        ImGui::Text("Requires %.2f (need %.2f)", requiredSpend,
-                    requiredSpend - e->getValue());
-        auto b = ImGui::Button("Spend %.2f for LV increase");
-        if (b && e->getValue() - requiredSpend > 0) {
-          e->decrValue(requiredSpend);
-          e->incrLevel();
-        }
+      ImGui::Begin("Economy Management", nullptr, ImGuiWindowFlags_NoCollapse);
+
+      auto *e = &game_data::economy.baseShare;
+      float currentVal = e->getValue();
+      float requiredSpend = e->getValueForLevelUpgrade();
+      bool canAfford = currentVal >= requiredSpend;
+
+      // --- Header Section ---
+      ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "Market Status");
+      ImGui::Separator();
+
+      // --- Graph Section ---
+      ImGui::PlotLines("##History", e->getHistory(), e->getHistoryLength(), 0,
+                       nullptr, e->getMinHistoryV(), e->getMaxHistoryV(),
+                       ImVec2(ImGui::GetContentRegionAvail().x, 120));
+
+      // --- Stats Table ---
+      if (ImGui::BeginTable("Stats", 2, ImGuiTableFlags_BordersInnerH)) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Current Value:");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f", currentVal);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Growth Rate (LV):");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f / sec", e->getLevel());
+
+        ImGui::EndTable();
       }
+      ImGui::Text("Formula: %s", e->getLevelCostFormula().c_str());
+
+      ImGui::Spacing();
+      ImGui::SeparatorText("Actions");
+
+      // --- Level Controls ---
+      if (ImGui::Button("-", ImVec2(30, 0)))
+        e->decrLevel();
+      ImGui::SameLine();
+      if (ImGui::Button("+", ImVec2(30, 0)))
+        e->incrLevel();
+      ImGui::SameLine();
+      ImGui::Text("Manual Level Adjustment");
+
+      ImGui::Spacing();
+
+      // --- Upgrade Section ---
+      // Change style for the upgrade button based on affordability
+      if (!canAfford) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.1f, 0.1f, 1.0f));
+      } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.4f, 0.1f, 1.0f));
+      }
+
+      char btnLabel[64];
+      sprintf(btnLabel, "Upgrade Level (Cost: %.2f)", requiredSpend);
+      if (ImGui::Button(btnLabel,
+                        ImVec2(ImGui::GetContentRegionAvail().x, 30)) &&
+          canAfford) {
+        e->decrValue(requiredSpend);
+        e->incrLevel();
+      }
+      ImGui::PopStyleColor();
+
+      // Progress bar for the next upgrade
+      float progress = std::clamp(currentVal / requiredSpend, 0.0f, 1.0f);
+      ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0),
+                         canAfford ? "READY TO UPGRADE"
+                                   : "Accumulating Funds...");
+
       ImGui::End();
     }
     {

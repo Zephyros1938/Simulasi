@@ -24,6 +24,10 @@ Binary Operators:\n\
 - m : MIN\n\
 - M : MAX\n\
 - G : LOG_N (b,v)\n\
+- < : LESS THAN\n\
+- > : GREATER THAN\n\
+- = : EQUAL\n\
+- \\ : NEQUAL\n\
 - & : Logical AND\n\
 - | : Logical OR\n\
 - % : Modulus\n\
