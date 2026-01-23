@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "utils.hpp"
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cstdint>
@@ -56,7 +57,7 @@ map<uint32_t, uint32_t> GlfwFlags = {
     {GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE},
     {GLFW_CONTEXT_DEBUG, GLFW_TRUE},
     {GLFW_RESIZABLE, GLFW_FALSE}};
-map<uint32_t, uint32_t> GlfwInitFlags{{GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND}};
+map<uint32_t, uint32_t> GlfwInitFlags{};
 } // namespace initialization
 namespace settings {
 static glm::vec4 clearColor{0.5, 0.5, 0.5, 1.0};
@@ -93,9 +94,10 @@ public:
 template <typename T, T DefaultValue, int HistoryLength> class EconomyObject {
 public:
   EconomyObject(float baseLevel = 1.0f, const char *upgradeLevelData = nullptr,
-                const char *valueIncreaseData = nullptr)
+                const char *valueIncreaseData = nullptr,
+                std::string name = uuid::generate_uuid_v4())
       : value(DefaultValue), level(baseLevel), minValue(DefaultValue),
-        maxValue(DefaultValue)
+        maxValue(DefaultValue), name(name)
   // Initialize directly to the lambda
   {
     std::fill_n(history, HistoryLength, DefaultValue);
@@ -137,6 +139,10 @@ public:
     return upgradeLevelFormula.evaluate({level + LVup, 0.0});
   }
   std::string getLevelCostFormula() { return upgradeLevelFormula.getSource(); }
+  std::string getRateIncreaseFormula() {
+    return rateIncreaseFormula.getSource();
+  }
+  std::string getName() { return name; }
 
 private:
   T value;
@@ -146,7 +152,11 @@ private:
   T maxValue;
   LogicEvaluator upgradeLevelFormula;
   LogicEvaluator rateIncreaseFormula;
+  std::string name;
 };
+
+template <float DefaultValue = 0, int HistoryLength = 64>
+class Stock : public EconomyObject<float, DefaultValue, HistoryLength> {};
 
 class Economy {
 public:
@@ -187,11 +197,7 @@ int main() {
       if (ImGui::Button("Quit")) {
         glfwSetWindowShouldClose(window, true);
       }
-      if (ImGui::InputText("Window Title", settings::windowTitle,
-                           IM_ARRAYSIZE(settings::windowTitle))) {
-        glfwSetWindowTitle(window, settings::windowTitle);
-      }
-      ImGui::ColorEdit4("Edit Background Color", &settings::clearColor[0]);
+
       ImGui::End();
     }
     {
@@ -207,8 +213,9 @@ int main() {
       ImGui::Separator();
 
       // --- Graph Section ---
-      ImGui::PlotLines("##History", e->getHistory(), e->getHistoryLength(), 0,
-                       nullptr, e->getMinHistoryV(), e->getMaxHistoryV(),
+      ImGui::PlotLines(("##History" + e->getName()).c_str(), e->getHistory(),
+                       e->getHistoryLength(), 0, e->getName().c_str(),
+                       e->getMinHistoryV(), e->getMaxHistoryV(),
                        ImVec2(ImGui::GetContentRegionAvail().x, 120));
 
       // --- Stats Table ---
@@ -227,19 +234,31 @@ int main() {
 
         ImGui::EndTable();
       }
-      ImGui::Text("Formula: %s", e->getLevelCostFormula().c_str());
+      ImGui::Spacing();
+      ImGui::SeparatorText("Formulas");
+      if (ImGui::BeginTable("##Formulas", 2, ImGuiTableFlags_BordersInnerH)) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Name");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("Formula");
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Level Cost");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%s", e->getLevelCostFormula().c_str());
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Rate Increase");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%s", e->getRateIncreaseFormula().c_str());
+        ImGui::EndTable();
+      }
 
       ImGui::Spacing();
       ImGui::SeparatorText("Actions");
-
-      // --- Level Controls ---
-      if (ImGui::Button("-", ImVec2(30, 0)))
-        e->decrLevel();
-      ImGui::SameLine();
-      if (ImGui::Button("+", ImVec2(30, 0)))
-        e->incrLevel();
-      ImGui::SameLine();
-      ImGui::Text("Manual Level Adjustment");
 
       ImGui::Spacing();
 
@@ -276,6 +295,11 @@ int main() {
       if (ImGui::Button("Reset Economy")) {
         game_data::economy = game_data::Economy();
       }
+      if (ImGui::InputText("Window Title", settings::windowTitle,
+                           IM_ARRAYSIZE(settings::windowTitle))) {
+        glfwSetWindowTitle(window, settings::windowTitle);
+      }
+      ImGui::ColorEdit4("Edit Background Color", &settings::clearColor[0]);
       ImGui::End();
     }
 
