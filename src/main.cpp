@@ -1,4 +1,5 @@
 #include "economy/base.hpp"
+#include "gui/core.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -71,6 +72,9 @@ int main() {
   glfwSetWindowSize(window, settings::width, settings::height);
   float lastFrame = 0.0f;
   float deltaTime = 0.0f;
+
+  double e_UpgradeCountSelected = 1.0;
+
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
@@ -95,17 +99,20 @@ int main() {
     }
     {
       ImGui::Begin("Economy Management", nullptr, ImGuiWindowFlags_NoCollapse);
+      // --- Header Section ---
+      ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "Market Status");
+      ImGui::Separator();
 
+      ImGui::BeginChild("##Economy Management",
+                        ImVec2(ImGui::GetWindowSize().x, 600.0));
+      gui::doubleInput(e_UpgradeCountSelected, 0.1, 10.0,
+                       "Level Upgrade Count");
       for (auto &e : game_data::economy.economySystem) {
         float currentVal = e.value;
-        float requiredSpend = e.getValueForLevelUpgrade();
+        float requiredSpend = e.getValueForLevelUpgrade(e_UpgradeCountSelected);
         bool canAfford = currentVal >= requiredSpend;
 
         ImGui::PushID(e.name.c_str());
-
-        // --- Header Section ---
-        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "Market Status");
-        ImGui::Separator();
 
         // --- Graph Section ---
         ImGui::PlotLines("##History", e.history.data(), e.history.size(), 0,
@@ -172,7 +179,7 @@ int main() {
                           ImVec2(ImGui::GetContentRegionAvail().x, 30)) &&
             canAfford) {
           e.value -= requiredSpend;
-          e.level++;
+          e.level += e_UpgradeCountSelected;
         }
         ImGui::PopStyleColor();
 
@@ -183,6 +190,7 @@ int main() {
                                      : "Accumulating Funds...");
         ImGui::PopID();
       }
+      ImGui::EndChild();
 
       ImGui::End();
     }
