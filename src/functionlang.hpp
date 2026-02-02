@@ -53,8 +53,8 @@ const char BINARY_OPS[] = {
     BINARY_OPS_ENUM::L_AND, BINARY_OPS_ENUM::L_OR,  BINARY_OPS_ENUM::MOD};
 const char TERNARY_OPS[] = {TERNARY_OPS_ENUM::WHETHER};
 
-using ExprFuncRet = const std::vector<float> &;
-using ExprFunc = std::function<float(ExprFuncRet)>;
+using ExprFuncRet = const std::vector<double> &;
+using ExprFunc = std::function<double(ExprFuncRet)>;
 
 const ExprFunc parseExpression(const char *&ptr) {
   if (ptr == nullptr || *ptr == '\0') {
@@ -77,7 +77,7 @@ const ExprFunc parseExpression(const char *&ptr) {
       if (index >= 0 && static_cast<size_t>(index) < args.size()) {
         return args[index];
       }
-      return 0.0f; // Default if index is out of bounds
+      return 0.0; // Default if index is out of bounds
     };
   }
   if (std::isdigit(op) || op == '.' || op == '-') {
@@ -118,13 +118,13 @@ const ExprFunc parseExpression(const char *&ptr) {
       ptr++;
     auto arg2 = parseExpression(ptr);
     return [arg1, arg2, op](ExprFuncRet args) {
-      float v1 = arg1(args);
-      float v2 = arg2(args);
+      auto v1 = arg1(args);
+      auto v2 = arg2(args);
       switch (op) {
       case BINARY_OPS_ENUM::MUL:
         return v1 * v2;
       case BINARY_OPS_ENUM::DIV:
-        return v2 == 0.0f ? 0.0f : v1 / v2;
+        return v2 == 0.0 ? 0.0 : v1 / v2;
       case BINARY_OPS_ENUM::ADD:
         return v1 + v2;
       case BINARY_OPS_ENUM::SUB:
@@ -137,24 +137,24 @@ const ExprFunc parseExpression(const char *&ptr) {
         return std::max(v1, v2);
       case BINARY_OPS_ENUM::LOG_N:
         if (v2 <= 0.0 || v1 <= 0.0 || v1 == 1.0)
-          return 0.0f;
+          return 0.0;
         return std::log(v2) / std::log(v1);
       case BINARY_OPS_ENUM::LT:
-        return v1 < v2 ? 1.0f : -1.0f;
+        return v1 < v2 ? 1.0 : -1.0;
       case BINARY_OPS_ENUM::GT:
-        return v1 > v2 ? 1.0f : -1.0f;
+        return v1 > v2 ? 1.0 : -1.0;
       case BINARY_OPS_ENUM::EQ:
-        return std::abs(v1 - v2) < 0.00001f ? 1.0f : -1.0f;
+        return std::abs(v1 - v2) < 0.00001 ? 1.0 : -1.0;
       case BINARY_OPS_ENUM::NE:
-        return std::abs(v1 - v2) > 0.00001f ? 1.0f : -1.0f;
+        return std::abs(v1 - v2) > 0.00001 ? 1.0 : -1.0;
       case BINARY_OPS_ENUM::L_AND:
-        return (v1 > 0.0f) && (v2 > 0.0f) ? 1.0f : -1.0f;
+        return (v1 > 0.0) && (v2 > 0.0) ? 1.0 : -1.0;
       case BINARY_OPS_ENUM::L_OR:
-        return (v1 > 0.0f) || (v2 > 0.0f) ? 1.0f : -1.0f;
+        return (v1 > 0.0) || (v2 > 0.0) ? 1.0 : -1.0;
       case BINARY_OPS_ENUM::MOD:
-        return v2 = 0.0f ? 0.0f : std::fmod(v1, v2);
+        return v2 = 0.0 ? 0.0 : std::fmod(v1, v2);
       default:
-        return 0.0f;
+        return 0.0;
       };
     };
 
@@ -166,14 +166,14 @@ const ExprFunc parseExpression(const char *&ptr) {
       ptr++;
     auto arg3 = parseExpression(ptr);
     return [arg1, arg2, arg3, op](ExprFuncRet args) {
-      float v1 = arg1(args);
-      float v2 = arg2(args);
-      float v3 = arg3(args);
+      auto v1 = arg1(args);
+      auto v2 = arg2(args);
+      auto v3 = arg3(args);
       switch (op) {
       case TERNARY_OPS_ENUM::WHETHER:
-        return v1 > 0.0f ? v2 : v3;
+        return v1 > 0.0 ? v2 : v3;
       default:
-        return 0.0f;
+        return 0.0;
       };
     };
   }

@@ -1,53 +1,96 @@
 #pragma once
 #include "utils.hpp"
-#include <cstdlib>
-#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <map>
+#include <random>
 
 namespace gambling {
 
-template <char SlotSize, typename T> class SlotMachine {
+template <std::size_t SlotSize> class SlotMachine {
 public:
-  SlotMachine() {
-    for (int x = 0; x < SlotSize; x++) {
-      for (int y = 0; y < 5; y++) {
-        slots[x][y] = y;
-      }
-    }
+  explicit SlotMachine(float baseBid)
+      : m_minBid(baseBid), m_cachedBid(baseBid), m_gen(std::random_device{}()) {
 
-    for (auto &slot : slots) {
-      util::rotateArray(slot, (int)(rand() % 100 + 1));
+    // Initialize symbols: 0 is common, 4 is rare (Jackpot)
+    for (std::size_t x = 0; x < SlotSize; ++x) {
+      for (int y = 0; y < 5; ++y) {
+        m_slots[x][y] = y;
+      }
+      spinColumn(x);
     }
   }
 
-  void roll(float &bid) {
-    for (auto &slot : slots) {
-      util::rotateArray(slot, (int)(rand() % 100 + 1));
+  // --- GUI Helpers ---
+  void setBid(float amount) { m_cachedBid = std::max(amount, m_minBid); }
+
+  float *getCachedBid() { return &m_cachedBid; }
+  float getCachedBidV() { return m_cachedBid; }
+  float *getMinBid() { return &m_minBid; }
+
+  // --- Core Logic ---
+  int roll(float &playerBalance) {
+    if (playerBalance < m_cachedBid) {
+      return -1; // Insufficient Funds
     }
 
-    std::vector<int> middleSlot;
+    playerBalance -= m_cachedBid;
 
-    for (int x = 0; x < SlotSize; x++) {
-      middleSlot.push_back(slots[x][2]);
+    for (std::size_t x = 0; x < SlotSize; ++x) {
+      spinColumn(x);
     }
 
-    int totalRating = 0;
+    // --- Payout Calculation ---
+    int firstSymbol = m_slots[0][2];
+    bool allMatch = true;
+    int matchCount = 1;
 
-    for (int v : middleSlot) {
-      totalRating += v;
-    }
-
-    bool shouldBonus = true;
-    for (int x = 0; x < SlotSize; x++) {
-      if (slots[x][2] != slots[0][2]) {
-        shouldBonus = false;
-        break;
+    for (std::size_t x = 1; x < SlotSize; ++x) {
+      if (m_slots[x][2] == firstSymbol) {
+        matchCount++;
+      } else {
+        allMatch = false;
       }
     }
 
-    bid *= (std::log(totalRating) + 1) * (shouldBonus ? 1.5 : 1.0);
+    double multiplier = 0.0;
+
+    if (allMatch) {
+      // Jackpot: Payout scales exponentially with the symbol's ID
+      // Match three '4's: pow(5, 2.5) * 5 = ~279x multiplier
+      multiplier = std::pow(firstSymbol + 1, 2.5) * 5.0;
+    } else if (matchCount >= 2) {
+      // "Near Miss" or Partial Match: Return some money to keep player engaged
+      multiplier = (firstSymbol + 1) * 0.4;
+    } else {
+      // House wins.
+      multiplier = 0.0;
+    }
+
+    playerBalance += static_cast<float>(m_cachedBid * multiplier);
+
+    // Return the center symbol of the first column as a "rating" for the UI
+    return m_slots[0][2];
   }
 
 private:
-  int slots[SlotSize][5];
+  void spinColumn(std::size_t colIndex) {
+    // Weighted Distribution: 0 and 1 are very common, 4 is very rare.
+    // This ensures the "big" symbols don't hit the center row too often.
+    std::discrete_distribution<int> weightDist({40, 30, 15, 10, 5});
+
+    // Rotate the column by a random amount
+    std::uniform_int_distribution<int> rotDist(1, 50);
+    util::rotateArray(m_slots[colIndex], rotDist(m_gen));
+
+    // Set the middle row result based on weights for "true" gambling feel
+    m_slots[colIndex][2] = weightDist(m_gen);
+  }
+
+  float m_minBid;
+  float m_cachedBid;
+  std::mt19937 m_gen;
+  int m_slots[SlotSize][5];
 };
-}; // namespace gambling
+
+} // namespace gambling

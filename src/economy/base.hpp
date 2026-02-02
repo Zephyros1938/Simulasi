@@ -1,20 +1,31 @@
 #pragma once
 #include "utils.hpp"
-template <typename T, T DefaultValue, int HistoryLength> class EconomyObject {
+#include <algorithm>
+#include <vector>
+
+class IEconomyObject {
 public:
-  EconomyObject(float baseLevel = 1.0f, const char *upgradeLevelData = nullptr,
+  virtual ~IEconomyObject() = default;
+  virtual void update(float dt) = 0;
+};
+
+class EconomyObject : public IEconomyObject {
+public:
+  // Replaced template constants with constructor parameters
+  EconomyObject(double defaultValue = 0.0f, int historyLength = 64,
+                double baseLevel = 1.0f, const char *upgradeLevelData = nullptr,
                 const char *valueIncreaseData = nullptr,
                 std::string name = util::uuid::generate_uuid_v4())
-      : value(DefaultValue), level(baseLevel), minValue(DefaultValue),
-        maxValue(DefaultValue), name(name)
-  // Initialize directly to the lambda
+      : value(defaultValue), level(baseLevel),
+        history(historyLength, defaultValue), minValue(defaultValue),
+        maxValue(defaultValue), name(name) // Initialize vector size
   {
-    std::fill_n(history, HistoryLength, DefaultValue);
     if (upgradeLevelData != nullptr) {
       upgradeLevelFormula = util::LogicEvaluator(upgradeLevelData);
     } else {
       upgradeLevelFormula = util::LogicEvaluator("*10,^1.15,V0");
     }
+
     if (valueIncreaseData != nullptr) {
       rateIncreaseFormula = util::LogicEvaluator(valueIncreaseData);
     } else {
@@ -22,54 +33,36 @@ public:
     }
   }
 
-  void update(float dt) {
+  void update(float dt) override {
     value = rateIncreaseFormula.evaluate({value, level * dt});
-    util::pushToBackOfArray(history, value);
-    minValue = util::minElement(history);
-    maxValue = util::maxElement(history);
+
+    // Using vector-based utility or manual shift
+    util::pushToBackOfVector(history, value);
+
+    minValue = *std::min_element(history.begin(), history.end());
+    maxValue = *std::max_element(history.begin(), history.end());
   };
 
-  T getValue() const { return value; }
-  float getLevel() const { return level; }
-  const T *getHistory() const { return history; }
-  constexpr int getHistoryLength() const { return HistoryLength; }
-  T getMinHistoryV() const { return minValue; }
-  T getMaxHistoryV() const { return maxValue; }
-
-  void setLevel(float v) { level += v; }
-  void incrLevel(float what = 1) { level += what; }
-  void decrLevel(float what = 1) { level -= what; }
-
-  void setValue(T v) { value = v; }
-  void incrValue(T what = 1) { value += what; }
-  void decrValue(T what = 1) { value -= what; }
-
-  T getValueForLevelUpgrade(float LVup = 1.0) {
-    return upgradeLevelFormula.evaluate({level + LVup, 0.0});
+  float getValueForLevelUpgrade(float LVup = 1.0f) {
+    return upgradeLevelFormula.evaluate({level + LVup, 0.0f});
   }
-  std::string getLevelCostFormula() { return upgradeLevelFormula.getSource(); }
-  std::string getRateIncreaseFormula() {
-    return rateIncreaseFormula.getSource();
-  }
-  std::string getName() { return name; }
 
-private:
-  T value;
+  int getHistoryLength() const { return static_cast<int>(history.size()); }
+
+  float value;
   float level;
-  T history[HistoryLength];
-  T minValue;
-  T maxValue;
+
+  std::vector<float> history;
+  float minValue;
+  float maxValue;
   util::LogicEvaluator upgradeLevelFormula;
   util::LogicEvaluator rateIncreaseFormula;
   std::string name;
 };
 
-template <float DefaultValue = 0, int HistoryLength = 64>
-class Stock : public EconomyObject<float, DefaultValue, HistoryLength> {};
-
-class Economy {
+// Stock is now just a simple derived class or a specific configuration
+class Stock : public EconomyObject {
 public:
-  EconomyObject<float, 10.0f, 1024> baseShare =
-      EconomyObject<float, 10.0f, 1024>(1.0, nullptr, nullptr, "Basic Share");
-  void update(double dt) { baseShare.update(dt); }
+  Stock(float defaultValue = 0.0f, int historyLength = 64)
+      : EconomyObject(defaultValue, historyLength) {}
 };

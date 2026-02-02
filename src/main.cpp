@@ -1,9 +1,7 @@
 #include "economy/base.hpp"
-#include "gambling/slotMachine.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include "utils.hpp"
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cstdint>
@@ -11,6 +9,7 @@
 #include <functionlang.hpp>
 #include <glm/glm.hpp>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -30,14 +29,34 @@ map<uint32_t, uint32_t> GlfwInitFlags{};
 namespace settings {
 static glm::vec4 clearColor{0.5, 0.5, 0.5, 1.0};
 static char windowTitle[256] = "Simulasi";
-const int width = 1280;
+const int width = 1920;
 const float aspectx = 16;
 const float aspecty = 9;
 const int height = width * (aspecty / aspectx);
 } // namespace settings
+
+class Economy {
+public:
+  std::vector<EconomyObject> economySystem;
+  EconomyObject baseShare =
+      EconomyObject(10.0, 1024, 1.0, nullptr, nullptr, "Basic Share");
+  void update(double dt) {
+    for (auto &e : economySystem) {
+      e.update(dt);
+    }
+  }
+
+  Economy() {
+    economySystem.push_back(
+        EconomyObject(1.0, 1024, 1.0, nullptr, nullptr, "Basic Share"));
+    economySystem.push_back(
+        EconomyObject(1.0, 1024, 1.0, nullptr, nullptr, "test"));
+  }
+};
+
 namespace game_data {
 Economy economy;
-gambling::SlotMachine<5, float> slotMachine;
+
 } // namespace game_data
 
 void initGlfw();
@@ -77,96 +96,99 @@ int main() {
     {
       ImGui::Begin("Economy Management", nullptr, ImGuiWindowFlags_NoCollapse);
 
-      auto *e = &game_data::economy.baseShare;
-      float currentVal = e->getValue();
-      float requiredSpend = e->getValueForLevelUpgrade();
-      bool canAfford = currentVal >= requiredSpend;
+      for (auto &e : game_data::economy.economySystem) {
+        float currentVal = e.value;
+        float requiredSpend = e.getValueForLevelUpgrade();
+        bool canAfford = currentVal >= requiredSpend;
 
-      // --- Header Section ---
-      ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "Market Status");
-      ImGui::Separator();
+        ImGui::PushID(e.name.c_str());
 
-      // --- Graph Section ---
-      ImGui::PlotLines(("##History" + e->getName()).c_str(), e->getHistory(),
-                       e->getHistoryLength(), 0, e->getName().c_str(),
-                       e->getMinHistoryV(), e->getMaxHistoryV(),
-                       ImVec2(ImGui::GetContentRegionAvail().x, 120));
+        // --- Header Section ---
+        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "Market Status");
+        ImGui::Separator();
 
-      // --- Stats Table ---
-      if (ImGui::BeginTable("Stats", 2, ImGuiTableFlags_BordersInnerH)) {
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Current Value:");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.2f", currentVal);
+        // --- Graph Section ---
+        ImGui::PlotLines("##History", e.history.data(), e.history.size(), 0,
+                         e.name.c_str(), e.minValue, e.maxValue,
+                         ImVec2(ImGui::GetContentRegionAvail().x, 120));
 
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Growth Rate (LV):");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.2f / sec", e->getLevel());
+        // --- Stats Table ---
+        if (ImGui::BeginTable("Stats", 2, ImGuiTableFlags_BordersInnerH)) {
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex(0);
+          ImGui::Text("Current Value:");
+          ImGui::TableSetColumnIndex(1);
+          ImGui::Text("%.2f", currentVal);
 
-        ImGui::EndTable();
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex(0);
+          ImGui::Text("Growth Rate (LV):");
+          ImGui::TableSetColumnIndex(1);
+          ImGui::Text("%.2f / sec", e.level);
+
+          ImGui::EndTable();
+        }
+        ImGui::Spacing();
+        ImGui::SeparatorText("Formulas");
+        if (ImGui::BeginTable("##Formulas", 2, ImGuiTableFlags_BordersInnerH)) {
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex(0);
+          ImGui::Text("Name");
+          ImGui::TableSetColumnIndex(1);
+          ImGui::Text("Formula");
+
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex(0);
+          ImGui::Text("Level Cost");
+          ImGui::TableSetColumnIndex(1);
+          ImGui::Text("%s", e.upgradeLevelFormula.getSource().c_str());
+
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex(0);
+          ImGui::Text("Rate Increase");
+          ImGui::TableSetColumnIndex(1);
+          ImGui::Text("%s", e.rateIncreaseFormula.getSource().c_str());
+          ImGui::EndTable();
+        }
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("Actions");
+
+        ImGui::Spacing();
+
+        // --- Upgrade Section ---
+        // Change style for the upgrade button based on affordability
+        if (!canAfford) {
+          ImGui::PushStyleColor(ImGuiCol_Button,
+                                ImVec4(0.4f, 0.1f, 0.1f, 1.0f));
+        } else {
+          ImGui::PushStyleColor(ImGuiCol_Button,
+                                ImVec4(0.1f, 0.4f, 0.1f, 1.0f));
+        }
+
+        char btnLabel[64];
+        sprintf(btnLabel, "Upgrade Level (Cost: %.2f)", requiredSpend);
+        if (ImGui::Button(btnLabel,
+                          ImVec2(ImGui::GetContentRegionAvail().x, 30)) &&
+            canAfford) {
+          e.value -= requiredSpend;
+          e.level++;
+        }
+        ImGui::PopStyleColor();
+
+        // Progress bar for the next upgrade
+        float progress = std::clamp(currentVal / requiredSpend, 0.0f, 1.0f);
+        ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0),
+                           canAfford ? "READY TO UPGRADE"
+                                     : "Accumulating Funds...");
+        ImGui::PopID();
       }
-      ImGui::Spacing();
-      ImGui::SeparatorText("Formulas");
-      if (ImGui::BeginTable("##Formulas", 2, ImGuiTableFlags_BordersInnerH)) {
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Name");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("Formula");
-
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Level Cost");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%s", e->getLevelCostFormula().c_str());
-
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Rate Increase");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%s", e->getRateIncreaseFormula().c_str());
-        ImGui::EndTable();
-      }
-
-      ImGui::Spacing();
-      ImGui::SeparatorText("Actions");
-
-      ImGui::Spacing();
-
-      // --- Upgrade Section ---
-      // Change style for the upgrade button based on affordability
-      if (!canAfford) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.1f, 0.1f, 1.0f));
-      } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.4f, 0.1f, 1.0f));
-      }
-
-      char btnLabel[64];
-      sprintf(btnLabel, "Upgrade Level (Cost: %.2f)", requiredSpend);
-      if (ImGui::Button(btnLabel,
-                        ImVec2(ImGui::GetContentRegionAvail().x, 30)) &&
-          canAfford) {
-        e->decrValue(requiredSpend);
-        e->incrLevel();
-      }
-      ImGui::PopStyleColor();
-
-      // Progress bar for the next upgrade
-      float progress = std::clamp(currentVal / requiredSpend, 0.0f, 1.0f);
-      ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0),
-                         canAfford ? "READY TO UPGRADE"
-                                   : "Accumulating Funds...");
 
       ImGui::End();
     }
     {
+
       ImGui::Begin("Gambling");
-      ImGui::TextColored(ImVec4(1.0, 1.0, 0.8, 1.0), "Gambling Menu");
-      ImGui::Spacing();
-      ImGui::SeparatorText("Slots");
 
       ImGui::End();
     }

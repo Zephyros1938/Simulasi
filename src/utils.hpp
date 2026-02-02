@@ -91,9 +91,63 @@ template <typename T, int S> void reverseArray(T (&array)[S]) {
   }
 }
 
+template <typename T> void pushToBackOfVector(std::vector<T> &vec, T val) {
+  if (vec.empty())
+    return;
+  std::copy(vec.begin() + 1, vec.end(), vec.begin());
+  vec.back() = val;
+}
+
+// 2. Find Minimum Element
+template <typename T> T minElement(const std::vector<T> &vec) {
+  // Standard library approach: return *std::min_element(vec.begin(),
+  // vec.end());
+  T minVal = vec[0];
+  for (const auto &item : vec) {
+    if (item < minVal)
+      minVal = item;
+  }
+  return minVal;
+}
+
+// 3. Find Maximum Element
+template <typename T> T maxElement(const std::vector<T> &vec) {
+  T maxVal = vec[0];
+  for (const auto &item : vec) {
+    if (item > maxVal)
+      maxVal = item;
+  }
+  return maxVal;
+}
+
+// 4. Rotate Vector (Left rotation by k)
+template <typename T> void rotateVector(std::vector<T> &vec, int k) {
+  int n = vec.size();
+  if (n == 0)
+    return;
+  k %= n;
+  if (k == 0)
+    return;
+
+  std::reverse(vec.begin(), vec.begin() + k);
+  std::reverse(vec.begin() + k, vec.end());
+  std::reverse(vec.begin(), vec.end());
+}
+
+// 5. Reverse Vector
+template <typename T> void reverseVector(std::vector<T> &vec) {
+  // You can also use std::reverse(vec.begin(), vec.end());
+  int i = 0, j = vec.size() - 1;
+  while (i < j) {
+    std::swap(vec[i], vec[j]);
+    i++;
+    j--;
+  }
+}
+
 class LogicEvaluator {
 private:
-  std::function<float(const std::vector<float> &)> formula;
+  std::function<double(const std::vector<double> &)> formula;
   std::string rawSource;
 
 public:
@@ -102,7 +156,9 @@ public:
     formula = functionlang::parseExpression(ptr);
   }
 
-  float evaluate(const std::vector<float> &args) const { return formula(args); }
+  float evaluate(const std::vector<double> &args) const {
+    return formula(args);
+  }
 
   std::string getSource() const { return rawSource; }
 
