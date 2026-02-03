@@ -1,4 +1,6 @@
 #include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <algorithm>
 #include <string>
 namespace gui {
@@ -17,5 +19,11 @@ inline void doubleInput(double &f, double min, double max, std::string label,
   ImGui::SameLine();
   ImGui::SliderScalar((label + "##slider").c_str(), ImGuiDataType_Double, &f,
                       &min, &max);
+}
+inline void setupFrame() {
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+  ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 }
 }; // namespace gui

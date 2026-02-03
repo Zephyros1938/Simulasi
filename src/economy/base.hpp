@@ -15,10 +15,10 @@ public:
   EconomyObject(double defaultValue = 0.0f, int historyLength = 64,
                 double baseLevel = 1.0f, const char *upgradeLevelData = nullptr,
                 const char *valueIncreaseData = nullptr,
-                std::string name = util::uuid::generate_uuid_v4())
+                std::string *name = nullptr)
       : value(defaultValue), level(baseLevel),
         history(historyLength, defaultValue), minValue(defaultValue),
-        maxValue(defaultValue), name(name) // Initialize vector size
+        maxValue(defaultValue) // Initialize vector size
   {
     if (upgradeLevelData != nullptr) {
       upgradeLevelFormula = util::LogicEvaluator(upgradeLevelData);
@@ -30,6 +30,12 @@ public:
       rateIncreaseFormula = util::LogicEvaluator(valueIncreaseData);
     } else {
       rateIncreaseFormula = util::LogicEvaluator("+V0,V1");
+    }
+    uuid = util::uuid::generate_uuid_v4();
+    if (name == nullptr) {
+      this->name = uuid;
+    } else {
+      this->name = *name;
     }
   }
 
@@ -58,6 +64,7 @@ public:
   util::LogicEvaluator upgradeLevelFormula;
   util::LogicEvaluator rateIncreaseFormula;
   std::string name;
+  std::string uuid;
 };
 
 // Stock is now just a simple derived class or a specific configuration

@@ -10,7 +10,6 @@
 #include <functionlang.hpp>
 #include <glm/glm.hpp>
 #include <map>
-#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -39,8 +38,6 @@ const int height = width * (aspecty / aspectx);
 class Economy {
 public:
   std::vector<EconomyObject> economySystem;
-  EconomyObject baseShare =
-      EconomyObject(10.0, 1024, 1.0, nullptr, nullptr, "Basic Share");
   void update(double dt) {
     for (auto &e : economySystem) {
       e.update(dt);
@@ -48,10 +45,10 @@ public:
   }
 
   Economy() {
+    economySystem.push_back(EconomyObject(1.0, 1024, 1.0, nullptr, nullptr,
+                                          new std::string("Base Stock")));
     economySystem.push_back(
-        EconomyObject(1.0, 1024, 1.0, nullptr, nullptr, "Basic Share"));
-    economySystem.push_back(
-        EconomyObject(1.0, 1024, 1.0, nullptr, nullptr, "test"));
+        EconomyObject(0.0, 1024, 0.0, "*10,^2,V1", nullptr));
   }
 };
 
@@ -83,10 +80,7 @@ int main() {
 
     glfwPollEvents();
 
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+    gui::setupFrame();
 
     {
       ImGui::Begin("Main Menu");
@@ -195,9 +189,8 @@ int main() {
       ImGui::End();
     }
     {
-
       ImGui::Begin("Gambling");
-
+      ImGui::TextColored(ImVec4(1.0, 1.0, 0.5, 1.0), "Gambling Menu");
       ImGui::End();
     }
     {
