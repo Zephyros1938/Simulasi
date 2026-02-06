@@ -1,8 +1,20 @@
 #include "functionlang.hpp"
 
+#include <cstring>
 #include <format>
 #include <iostream>
 #include <string>
+#include <vector>
+
+namespace Color {
+const std::string Reset = "\033[0m";
+const std::string Red = "\033[31m";
+const std::string Green = "\033[32m";
+const std::string Yellow = "\033[33m";
+const std::string Blue = "\033[34m";
+const std::string Cyan = "\033[36m";
+const std::string Bold = "\033[1m";
+} // namespace Color
 
 const std::string help_string = std::format("FunctionLang Version {}\n\
 Unary Operators:\n\
@@ -31,6 +43,7 @@ Binary Operators:\n\
 - & : Logical AND\n\
 - | : Logical OR\n\
 - % : Modulus\n\
+- ~ : Round (round V0 by V1)\n\
 Ternary Operators:\n\
 - ? : Ternary Operator\n\
 Usage:\n\
@@ -54,7 +67,12 @@ int main() {
   std::string input_buffer;
   const char *pt = nullptr;
 
-  std::cout << ":q to exit | :h for help" << std::endl;
+  std::vector<double> values;
+  values.resize(256, 0.0);
+
+  std::cout << ":q to exit | :h for help | :s V[n] [expr] | V[0-255] to index "
+               "value store"
+            << std::endl;
 
   while (true) {
     std::cout << "> ";
@@ -65,10 +83,33 @@ int main() {
       std::cout << help_string << std::endl;
       continue;
     }
-
+    if (input_buffer.starts_with(":s")) {
+      try {
+        size_t v_pos = input_buffer.find('V');
+        size_t space_pos = input_buffer.find(' ', v_pos);
+        if (v_pos != std::string::npos && space_pos != std::string::npos) {
+          int index =
+              std::stoi(input_buffer.substr(v_pos + 1, space_pos - v_pos - 1));
+          std::string expr_part = input_buffer.substr(space_pos + 1);
+          auto cs = expr_part.c_str();
+          double result = functionlang::parseExpression(cs)({10, 5});
+          if (index >= 0 && index < (int)values.size()) {
+            values[index] = result;
+            std::cout << "V" << index << " = " << result << std::endl;
+          } else {
+            std::cerr << Color::Red << "Error: Index V" << index
+                      << " out of range." << Color::Reset << std::endl;
+          }
+        }
+      } catch (const std::exception &e) {
+        std::cerr << Color::Red << "Error parsing setter: " << e.what()
+                  << Color::Reset << std::endl;
+      }
+      continue;
+    }
     pt = input_buffer.c_str();
 
-    std::cout << functionlang::parseExpression(pt)({10, 5}) << std::endl;
+    std::cout << functionlang::parseExpression(pt)(values) << std::endl;
   }
   return 0;
 }

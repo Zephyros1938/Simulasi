@@ -1,11 +1,45 @@
 #pragma once
 #include "functionlang.hpp"
 #include <algorithm>
+#include <cfloat>
+#include <climits>
 #include <functional>
 #include <random>
 #include <sstream>
 
 namespace util {
+
+namespace rand {
+class Random {
+  static std::mt19937 &get_engine() {
+    thread_local std::mt19937 engine(std::random_device{}());
+    return engine;
+  }
+
+public:
+  static int get_int(int min = INT_MIN, int max = INT_MAX) {
+    std::uniform_int_distribution<int> dist(min, max);
+    return dist(get_engine());
+  }
+
+  static unsigned int get_unsigned_int(unsigned int min = 0,
+                                       unsigned int max = UINT_MAX) {
+    std::uniform_int_distribution<unsigned int> dist(min, max);
+    return dist(get_engine());
+  }
+
+  static float get_float(float min = 0.0f, float max = 1.0f) {
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(get_engine());
+  }
+
+  static double get_double(double min = 0.0, double max = 1.0) {
+    std::uniform_real_distribution<double> dist(min, max);
+    return dist(get_engine());
+  }
+};
+}; // namespace rand
+
 namespace uuid {
 static std::random_device rd;
 static std::mt19937 gen(rd());

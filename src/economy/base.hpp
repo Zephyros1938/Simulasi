@@ -7,6 +7,7 @@ class IEconomyObject {
 public:
   virtual ~IEconomyObject() = default;
   virtual void update(float dt) = 0;
+  std::string uuid;
 };
 
 class EconomyObject : public IEconomyObject {
@@ -15,7 +16,7 @@ public:
   EconomyObject(double defaultValue = 0.0f, int historyLength = 64,
                 double baseLevel = 1.0f, const char *upgradeLevelData = nullptr,
                 const char *valueIncreaseData = nullptr,
-                std::string *name = nullptr)
+                const char *name = nullptr)
       : value(defaultValue), level(baseLevel),
         history(historyLength, defaultValue), minValue(defaultValue),
         maxValue(defaultValue) // Initialize vector size
@@ -35,7 +36,7 @@ public:
     if (name == nullptr) {
       this->name = uuid;
     } else {
-      this->name = *name;
+      this->name = name;
     }
   }
 
@@ -64,7 +65,6 @@ public:
   util::LogicEvaluator upgradeLevelFormula;
   util::LogicEvaluator rateIncreaseFormula;
   std::string name;
-  std::string uuid;
 };
 
 // Stock is now just a simple derived class or a specific configuration

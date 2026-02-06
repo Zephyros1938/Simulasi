@@ -8,9 +8,6 @@ namespace functionlang {
 
 const char VERSION[] = "0.2.1";
 
-const char IN_1 = '(';
-const char IN_2 = ')';
-
 enum UNARY_OPS_ENUM {
   LOG = 'l',
   LOG2 = 'L',
@@ -37,7 +34,8 @@ enum BINARY_OPS_ENUM {
   NE = '\\',
   L_AND = '&',
   L_OR = '|',
-  MOD = '%'
+  MOD = '%',
+  ROUND = '~'
 };
 enum TERNARY_OPS_ENUM { WHETHER = '?' };
 
@@ -50,7 +48,8 @@ const char BINARY_OPS[] = {
     BINARY_OPS_ENUM::SUB,   BINARY_OPS_ENUM::POW,   BINARY_OPS_ENUM::MIN,
     BINARY_OPS_ENUM::MAX,   BINARY_OPS_ENUM::LOG_N, BINARY_OPS_ENUM::LT,
     BINARY_OPS_ENUM::GT,    BINARY_OPS_ENUM::EQ,    BINARY_OPS_ENUM::NE,
-    BINARY_OPS_ENUM::L_AND, BINARY_OPS_ENUM::L_OR,  BINARY_OPS_ENUM::MOD};
+    BINARY_OPS_ENUM::L_AND, BINARY_OPS_ENUM::L_OR,  BINARY_OPS_ENUM::MOD,
+    BINARY_OPS_ENUM::ROUND};
 const char TERNARY_OPS[] = {TERNARY_OPS_ENUM::WHETHER};
 
 using ExprFuncRet = const std::vector<double> &;
@@ -153,11 +152,14 @@ const ExprFunc parseExpression(const char *&ptr) {
         return (v1 > 0.0) || (v2 > 0.0) ? 1.0 : -1.0;
       case BINARY_OPS_ENUM::MOD:
         return v2 = 0.0 ? 0.0 : std::fmod(v1, v2);
+      case BINARY_OPS_ENUM::ROUND: {
+        auto n = std::pow(10.0, v2);
+        return std::round(v1 * n) / n;
+      }
       default:
         return 0.0;
       };
     };
-
   } else if (std::ranges::contains(TERNARY_OPS, op)) {
     if (*ptr == ',')
       ptr++;

@@ -1,10 +1,13 @@
 #include "economy/base.hpp"
 #include "gui/core.hpp"
+#include "gui/selectionMenu.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "utils.hpp"
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <cfloat>
 #include <cstdint>
 #include <cstring>
 #include <functionlang.hpp>
@@ -12,6 +15,13 @@
 #include <map>
 #include <stdexcept>
 #include <vector>
+
+#ifdef UNICODE
+#undef UNICODE
+#endif
+#ifdef _UNICODE
+#undef _UNICODE
+#endif
 
 namespace initialization {
 using namespace std;
@@ -45,16 +55,17 @@ public:
   }
 
   Economy() {
-    economySystem.push_back(EconomyObject(1.0, 1024, 1.0, nullptr, nullptr,
-                                          new std::string("Base Stock")));
     economySystem.push_back(
-        EconomyObject(0.0, 1024, 0.0, "*10,^2,V1", nullptr));
+        EconomyObject(1.0, 1024, 1.0, nullptr, nullptr, "Base Stock"));
+    economySystem.push_back(
+        EconomyObject(0.0, 1024, 0.0, "*10,^2,V1", nullptr, "Advanced Stock"));
   }
 };
 
 namespace game_data {
 Economy economy;
-
+gui::selectionMenu::EconomyObjectSelectionMenu
+    g_EconomySelect(&economy.economySystem);
 } // namespace game_data
 
 void initGlfw();
@@ -71,6 +82,7 @@ int main() {
   float deltaTime = 0.0f;
 
   double e_UpgradeCountSelected = 1.0;
+  size_t g_SelectedEconomyObjectIndex = -1;
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -167,10 +179,9 @@ int main() {
                                 ImVec4(0.1f, 0.4f, 0.1f, 1.0f));
         }
 
-        char btnLabel[64];
-        sprintf(btnLabel, "Upgrade Level (Cost: %.2f)", requiredSpend);
-        if (ImGui::Button(btnLabel,
-                          ImVec2(ImGui::GetContentRegionAvail().x, 30)) &&
+        if (gui::buttonFormat("Upgrade Level (Cost: {:.2f})",
+                              ImVec2(ImGui::GetContentRegionAvail().x, 30),
+                              requiredSpend) &&
             canAfford) {
           e.value -= requiredSpend;
           e.level += e_UpgradeCountSelected;
@@ -190,7 +201,33 @@ int main() {
     }
     {
       ImGui::Begin("Gambling");
-      ImGui::TextColored(ImVec4(1.0, 1.0, 0.5, 1.0), "Gambling Menu");
+      auto &items = game_data::economy.economySystem;
+      game_data::g_EconomySelect.display();
+      size_t gt_selectedEconomyIndex = game_data::g_EconomySelect.getIndex();
+      if (gt_selectedEconomyIndex != (size_t)-1) {
+        if (ImGui::Button("d20")) {
+          double n =
+              (double)util::rand::Random::get_int(1, 20); // if > d15, mult up
+          items[gt_selectedEconomyIndex].value *= pow(2, (n - 15) / 6.7);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("d10")) {
+          double n = (double)util::rand::Random::get_int(1, 10);
+          items[gt_selectedEconomyIndex].value *= pow(1.2, (n - 4.6) / 3.1);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("d4")) {
+          double n = (double)util::rand::Random::get_int(1, 4);
+          items[gt_selectedEconomyIndex].value *= pow(2, (n - 2.9) / 14.1);
+        }
+        ImGui::SameLine();
+        ImGui::Button("d1");
+        ImGui::SameLine();
+        if (ImGui::Button("d0")) {
+          items[gt_selectedEconomyIndex].value *= 0.9;
+        }
+      }
+
       ImGui::End();
     }
     {
