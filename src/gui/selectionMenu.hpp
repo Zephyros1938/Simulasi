@@ -18,7 +18,7 @@ protected:
 
     if (selectionRef->empty())
       return noSelectionText;
-    else if (selectionIndex >= 0 && selectionIndex < selectionRef->capacity())
+    else if (selectionIndex < selectionRef->capacity())
       return selectionNames[selectionIndex];
 
     return noSelectionText;
@@ -27,8 +27,8 @@ protected:
 
 public:
   ISelectionMenu(std::vector<T> *toSelect, const char *noSelectionText = "None")
-      : selectionRef(toSelect), noSelectionText(noSelectionText),
-        selectionIndex(0) {}
+      : selectionRef(toSelect), selectionIndex(0),
+        noSelectionText(noSelectionText) {}
   virtual ~ISelectionMenu() = default;
 
   void display(const char *label = "Select") {

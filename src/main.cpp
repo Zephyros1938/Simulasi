@@ -82,8 +82,6 @@ int main() {
   float deltaTime = 0.0f;
 
   double e_UpgradeCountSelected = 1.0;
-  size_t g_SelectedEconomyObjectIndex = -1;
-
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
@@ -242,6 +240,8 @@ int main() {
         glfwSetWindowTitle(window, settings::windowTitle);
       }
       ImGui::ColorEdit4("Edit Background Color", &settings::clearColor[0]);
+      ImGui::SeparatorText("Economy Objects");
+
       ImGui::End();
     }
     ImGui::EndFrame();

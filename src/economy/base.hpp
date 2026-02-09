@@ -51,7 +51,7 @@ public:
   };
 
   float getValueForLevelUpgrade(float LVup = 1.0f) {
-    return upgradeLevelFormula.evaluate({level + LVup, 0.0f});
+    return upgradeLevelFormula.evaluate({level + LVup});
   }
 
   int getHistoryLength() const { return static_cast<int>(history.size()); }
